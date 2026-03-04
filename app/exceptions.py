@@ -52,7 +52,7 @@ class AuthenticationError(AppError):
 
     def __init__(self, message: str = "Authentication required") -> None:  # noqa: ANN401
         """Initialize the AuthenticationError with an optional message."""
-        super().__init__(message=message, status_code=401, error_code="UNAUTHENTICATED")
+        super().__init__(message=message, status_code=401, error_code="AUTHENTICATION_FAILED")
 
 
 class AuthorizationError(AppError):

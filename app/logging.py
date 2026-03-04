@@ -1,36 +1,124 @@
-"""This module sets up structured JSON logging for the application using the python-json-logger library."""
+"""Logging configuration and setup for the FastAPI application."""
 
 import logging
+import sys
 
-from pythonjsonlogger import jsonlogger
+from loguru import logger
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+# Format for logs using UTC timestamps
+LOG_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green> | "
+    "<level>{level: <8}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+    "<level>{message}</level> - "
+    "<yellow>{extra}</yellow>"
+)
+
+# ---------------------------------------------------------------------------
+# Standard-library logging bridge
+# ---------------------------------------------------------------------------
 
 
-def setup_json_logging() -> None:
-    """Configure structured JSON logging for the application."""
+class InterceptHandler(logging.Handler):
+    """Stdlib logging handler that redirects all records into Loguru.
 
-    # Create a custom formatter that includes extra fields
-    class CustomJsonFormatter(jsonlogger.JsonFormatter):
-        def add_fields(self, log_record, record, message_dict) -> None:
-            """Add custom fields to the log record."""
-            super().add_fields(log_record, record, message_dict)
+    Installed as the sole handler on the root logger so that libraries using
+    the standard logging module (uvicorn, SQLAlchemy, httpx, …) are captured
+    by Loguru's pipeline and formatted/exported consistently with application logs.
+    """
 
-            # Add standard fields to every log entry
-            log_record["timestamp"] = record.created
-            log_record["level"] = record.levelname
-            log_record["logger"] = record.name
+    def emit(self, record: logging.LogRecord) -> None:
+        """Forward a stdlib LogRecord to the equivalent Loguru level.
 
-            # Add location info for debugging
-            log_record["module"] = record.module
-            log_record["function"] = record.funcName
-            log_record["line"] = record.lineno
+        Args:
+            record: The stdlib log record to forward.
+        """
+        level: str | int
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
 
-    # Configure the formatter with desired fields
-    formatter = CustomJsonFormatter("%(timestamp)s %(level)s %(name)s %(message)s")
+        frame, depth = logging.currentframe(), 2
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back  # type: ignore[assignment]
+            depth += 1
 
-    # Set up handler with JSON formatter
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
-    # Configure root logger
-    logging.root.handlers = [handler]
-    logging.root.setLevel(logging.INFO)
+
+# ---------------------------------------------------------------------------
+# Private setup helpers
+# ---------------------------------------------------------------------------
+
+
+def _setup_sinks(log_level: str) -> None:
+    """Attach output sinks to Loguru.
+
+    Args:
+        log_level: Minimum log level string (e.g. "INFO", "DEBUG").
+    """
+    logger.add(
+        sys.stdout,
+        level=log_level,
+        enqueue=True,
+        backtrace=False,
+        diagnose=False,
+        format=LOG_FORMAT,
+        serialize=False,
+    )
+
+
+def _disable_loggers(names: list[str]) -> None:
+    """Fully disable a list of stdlib loggers.
+
+    Args:
+        names: Logger names to disable.
+    """
+    for name in names:
+        log = logging.getLogger(name)
+        log.handlers = []
+        log.propagate = False
+        log.disabled = True
+
+
+def _intercept_standard_logging(log_level: str) -> None:
+    """Route stdlib logging into Loguru.
+
+    Replaces all root logger handlers with a single InterceptHandler so every
+    stdlib log record is forwarded to Loguru.
+
+    Args:
+        log_level: Minimum log level string applied to the root logger.
+    """
+    logging.root.handlers = [InterceptHandler()]
+    logging.root.setLevel(log_level)
+
+    for name in logging.root.manager.loggerDict:
+        logging.getLogger(name).handlers = []
+        logging.getLogger(name).propagate = True
+
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
+
+
+def setup_logging(silenced_loggers: list[str] | None = None) -> None:
+    """Configure Loguru and route stdlib logging into it.
+
+    Args:
+        silenced_loggers: Optional list of stdlib logger names to disable entirely. Defaults to None (no loggers silenced).
+    """
+    logger.remove()
+
+    logger.configure(extra={"version": "1.0.0", "environment": "production"})
+
+    _setup_sinks("INFO")
+    _intercept_standard_logging("INFO")
+    if silenced_loggers:
+        _disable_loggers(silenced_loggers)

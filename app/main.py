@@ -4,17 +4,21 @@ from collections.abc import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
+from loguru import logger
 
 from app.api import router
 from app.exception_handlers import register_exception_handlers
-from app.logging import setup_json_logging
+from app.logging import setup_logging
+
+setup_logging(["uvicorn.access"])
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     """Lifespan context manager to perform startup and shutdown tasks."""
-    setup_json_logging()
+    # Perform any additional startup tasks here (e.g. warmup, preloading) if needed
     yield
+    await logger.complete()  # Ensure all logs are flushed on shutdown
 
 
 # ---------------------------------------------------------------------------
