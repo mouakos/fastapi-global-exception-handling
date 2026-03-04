@@ -10,7 +10,15 @@ from app.api import router
 from app.exception_handlers import register_exception_handlers
 from app.logging import setup_logging
 
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
 setup_logging(["uvicorn.access"])
+
+
+# ---------------------------------------------------------------------------
+# Application instance
+# ---------------------------------------------------------------------------
 
 
 @asynccontextmanager
@@ -21,9 +29,6 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     await logger.complete()  # Ensure all logs are flushed on shutdown
 
 
-# ---------------------------------------------------------------------------
-# Application instance
-# ---------------------------------------------------------------------------
 app = FastAPI(
     lifespan=lifespan,
     title="FastAPI Global Exception Handling Example",
