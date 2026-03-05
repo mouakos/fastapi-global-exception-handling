@@ -76,13 +76,15 @@ def log_error(
 ) -> None:
     """Log the error event with structured context."""
     request_info = get_request_info(request)
-    logger.bind(
+    log = logger.bind(
         **asdict(request_info),
         status_code=status_code,
         error_code=error_code,
         error_message=message,
-        error_details=details,
-    ).opt(exception=exception).log(level, event)
+    ).opt(exception=exception)
+    if details:
+        log = log.bind(error_details=details)
+    log.log(level, event)
 
 
 def normalize_validation_errors(exc: RequestValidationError) -> list[dict[str, str]]:

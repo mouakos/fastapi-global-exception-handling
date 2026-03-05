@@ -107,7 +107,11 @@ uv sync
 ### ▶️ Running the Server
 
 ```bash
+# Development — auto-reloads on file changes
 uv run uvicorn app.main:app --reload
+
+# Production — no reload, stable process
+uv run uvicorn app.main:app
 ```
 
 The API will be available at `http://127.0.0.1:8000`.  

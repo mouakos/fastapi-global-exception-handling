@@ -57,7 +57,7 @@ class InterceptHandler(logging.Handler):
 
 
 def _setup_sinks(log_level: str) -> None:
-    """Attach output sinks to Loguru.
+    """Configure Loguru sinks for console and file logging.
 
     Args:
         log_level: Minimum log level string (e.g. "INFO", "DEBUG").
@@ -68,6 +68,18 @@ def _setup_sinks(log_level: str) -> None:
         enqueue=True,
         backtrace=False,
         diagnose=False,
+        format=LOG_FORMAT,
+        serialize=False,
+    )
+
+    logger.add(
+        "logs/app.log",
+        level=log_level,
+        rotation="10 MB",
+        retention="7 days",
+        compression="zip",
+        backtrace=True,
+        diagnose=True,
         format=LOG_FORMAT,
         serialize=True,
     )
