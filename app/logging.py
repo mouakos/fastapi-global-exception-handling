@@ -69,7 +69,7 @@ def _setup_sinks(log_level: str) -> None:
         backtrace=False,
         diagnose=False,
         format=LOG_FORMAT,
-        serialize=False,
+        serialize=True,
     )
 
 

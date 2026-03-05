@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -31,8 +31,6 @@ HTTP_ERROR_CODE_MAP: dict[int, str] = {
     504: "GATEWAY_TIMEOUT",
 }
 
-ErrorLevel = Literal["INFO", "ERROR", "EXCEPTION"]
-
 
 def build_error_response(
     error_code: str,
@@ -51,33 +49,40 @@ def build_error_response(
     return ErrorResponse(**content)
 
 
-def log_and_build_response(
+def build_response(
     *,
-    request: Request,
     status_code: int,
-    event: str,
     error_code: str,
     message: str,
     details: dict[str, Any] | None = None,
-    level: ErrorLevel = "INFO",
 ) -> JSONResponse:
     """Log the error event and build a JSONResponse with consistent structure."""
     response_model = build_error_response(error_code, message, details)
-    request_info = get_request_info(request)
-    bound = logger.bind(
-        **asdict(request_info),
-        status_code=status_code,
-        **response_model.model_dump(exclude_none=True),
-    )
-    if level == "EXCEPTION":
-        bound.exception(event)
-    elif level == "ERROR":
-        bound.error(event)
-    else:
-        bound.info(event)
     return JSONResponse(
         status_code=status_code, content=response_model.model_dump(exclude_none=True)
     )
+
+
+def log_error(
+    *,
+    request: Request,
+    status_code: int,
+    error_code: str,
+    message: str,
+    event: str,
+    details: dict[str, Any] | None = None,
+    level: str = "INFO",
+    exception: bool = False,
+) -> None:
+    """Log the error event with structured context."""
+    request_info = get_request_info(request)
+    logger.bind(
+        **asdict(request_info),
+        status_code=status_code,
+        error_code=error_code,
+        error_message=message,
+        error_details=details,
+    ).opt(exception=exception).log(level, event)
 
 
 def normalize_validation_errors(exc: RequestValidationError) -> list[dict[str, str]]:
@@ -101,14 +106,21 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_exception_handler(request: Request, exc: AppError) -> JSONResponse:
         """Handle all custom application exceptions."""
-        return log_and_build_response(
+        log_level = "ERROR" if exc.status_code >= 500 else "INFO"
+        log_error(
             request=request,
             status_code=exc.status_code,
-            event="application_error",
             error_code=exc.error_code,
             message=exc.message,
             details=exc.details,
-            level="INFO" if exc.status_code < 500 else "ERROR",
+            event="app_exception",
+            level=log_level,
+        )
+        return build_response(
+            status_code=exc.status_code,
+            error_code=exc.error_code,
+            message=exc.message,
+            details=exc.details,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -116,37 +128,52 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         """Handle Pydantic validation errors."""
-        return log_and_build_response(
+        log_error(
             request=request,
             status_code=422,
-            event="validation_error",
             error_code="INVALID_INPUT",
             message="Request validation failed",
             details={"errors": normalize_validation_errors(exc)},
-            level="INFO",
+            event="validation_error",
+        )
+        return build_response(
+            status_code=422,
+            error_code="INVALID_INPUT",
+            message="Request validation failed",
+            details={"errors": normalize_validation_errors(exc)},
         )
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         """Handle standard HTTP exceptions raised by FastAPI or Starlette."""
         error_code = HTTP_ERROR_CODE_MAP.get(exc.status_code, "HTTP_ERROR")
-        return log_and_build_response(
+        log_error(
             request=request,
             status_code=exc.status_code,
-            event="http_error",
             error_code=error_code,
             message=str(exc.detail),
-            level="INFO" if exc.status_code < 500 else "ERROR",
+            event="http_exception",
+        )
+        return build_response(
+            status_code=exc.status_code,
+            error_code=error_code,
+            message=str(exc.detail),
         )
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, _: Exception) -> JSONResponse:
         """Catch-all handler for unexpected errors."""
-        return log_and_build_response(
+        log_error(
             request=request,
             status_code=500,
-            event="unhandled_exception",
             error_code="INTERNAL_ERROR",
             message="An unexpected error occurred. Please try again later.",
-            level="EXCEPTION",
+            event="unhandled_exception",
+            level="ERROR",
+            exception=True,
+        )
+        return build_response(
+            status_code=500,
+            error_code="INTERNAL_ERROR",
+            message="An unexpected error occurred. Please try again later.",
         )

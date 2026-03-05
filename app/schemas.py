@@ -1,8 +1,9 @@
 """Schema definitions for structured error responses in the FastAPI application."""
 
+from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ErrorDetail(BaseModel):
@@ -16,16 +17,18 @@ class ErrorDetail(BaseModel):
 class ErrorResponse(BaseModel):
     """Error response model for consistent API error responses."""
 
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     error: ErrorDetail
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
+                "timestamp": "2024-06-01T12:00:00.000000+00:00",
                 "error": {
                     "code": "NOT_FOUND",
                     "message": "The requested item was not found.",
                     "details": {"resource": "Item", "resource_id": 123},
-                }
+                },
             }
         }
     )
