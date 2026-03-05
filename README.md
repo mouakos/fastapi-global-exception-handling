@@ -37,8 +37,6 @@
     - [⚡ FastAPI \& Starlette](#-fastapi--starlette)
     - [🔧 Error Handling \& API Design](#-error-handling--api-design)
     - [📝 Logging](#-logging)
-    - [🧪 Testing](#-testing-1)
-    - [🔬 Code Quality](#-code-quality-1)
   - [🤝 Feedback \& Contributing](#-feedback--contributing)
   - [📜 License](#-license)
 
@@ -258,26 +256,15 @@ Pre-commit hooks run automatically on every `git commit` (Ruff lint → Ruff for
 
 ### ⚡ FastAPI & Starlette
 - [FastAPI Exception Handlers](https://fastapi.tiangolo.com/tutorial/handling-errors/) — Official docs on `HTTPException` and custom handlers
-- [FastAPI Dependencies](https://fastapi.tiangolo.com/tutorial/dependencies/) — Dependency injection patterns used in route design
 - [Starlette Middleware](https://www.starlette.io/middleware/) — How middleware works in the request/response lifecycle
 
 ### 🔧 Error Handling & API Design
 - [RFC 7807 — Problem Details for HTTP APIs](https://datatracker.ietf.org/doc/html/rfc7807) — Standard for structured HTTP error responses
-- [OWASP API Security Top 10](https://owasp.org/API-Security/editions/2023/en/0x00-header/) — Common API vulnerabilities and mitigations
 - [Google API Design Guide — Errors](https://cloud.google.com/apis/design/errors) — Industry-standard error model used by Google APIs
 
 ### 📝 Logging
 - [Loguru Documentation](https://loguru.readthedocs.io/) — Structured logging library used in this project
 - [Structured Logging Best Practices](https://betterstack.com/community/guides/logging/structured-logging/) — Guide to structured, machine-readable logs
-
-### 🧪 Testing
-- [pytest Documentation](https://docs.pytest.org/) — Testing framework used in this project
-- [FastAPI Testing Guide](https://fastapi.tiangolo.com/tutorial/testing/) — Official guide to testing FastAPI applications with `TestClient`
-
-### 🔬 Code Quality
-- [Ruff Documentation](https://docs.astral.sh/ruff/) — Fast Python linter and formatter
-- [Mypy Documentation](https://mypy.readthedocs.io/) — Static type checker for Python
-- [pre-commit Documentation](https://pre-commit.com/) — Git hook framework used for automated checks
 
 ---
 
@@ -286,8 +273,6 @@ Pre-commit hooks run automatically on every `git commit` (Ruff lint → Ruff for
 **Feedback & questions** — open a [GitHub Discussion](https://github.com/mouakos/fastapi-global-exception-handling/discussions) for questions, ideas, or general feedback.
 
 **Bug reports** — open a [GitHub Issue](https://github.com/mouakos/fastapi-global-exception-handling/issues) for confirmed bugs or actionable feature requests.
-
-**Contributing** — read the [CONTRIBUTING.md](CONTRIBUTING.md) guide for the full workflow: fork & clone, branch naming, commit conventions, code quality standards, and PR guidelines.
 
 ---
 
